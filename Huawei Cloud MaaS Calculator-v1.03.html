@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>华为云 MaaS 计算器</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --border: #262b36;
+    --text: #e6e8eb;
+    --muted: #8b93a1;
+    --accent: #ff6a00;
+    --accent-soft: rgba(255,106,0,.14);
+    --green: #2ecc71;
+    --row-hover: #1d212b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 28px 0 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .note { color: var(--muted); font-size: 12.5px; margin: 6px 0 14px; }
+
+  .topbar {
+    display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px; margin-bottom: 22px;
+  }
+  .badge {
+    padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border);
+  }
+  .badge.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .badge.off { color: var(--muted); }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  .toggle input { cursor: pointer; }
+  .langbtn {
+    margin-left: auto;
+    padding: 6px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .langbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .legend { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; }
+  .legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--accent-soft); border: 1px solid var(--accent); margin-right: 5px; vertical-align: middle; }
+
+  .scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 14px; }
+  th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  thead th { background: #1b1f28; color: var(--muted); font-weight: 600; font-size: 12.5px; letter-spacing: .02em; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--row-hover); }
+  td.num { font-variant-numeric: tabular-nums; }
+  #tbl th, #tbl td { white-space: normal; }
+  .model { font-weight: 600; }
+  .muted { color: var(--muted); }
+  .glm { background: rgba(255,106,0,.04); }
+  .strike { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+  .disc { color: var(--accent); font-weight: 600; }
+  .pd { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 1.15; }
+  .pd .strike { font-size: 12px; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; vertical-align: middle; }
+  .lines { display: flex; flex-direction: column; gap: 4px; }
+  .line { display: flex; gap: 8px; align-items: baseline; }
+  .line .lab { color: var(--muted); font-size: 12px; min-width: 36px; }
+  .line.min { color: var(--green); font-weight: 600; }
+  .line.max { color: var(--accent); font-weight: 600; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; margin-bottom: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); }
+  .field input { width: 150px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 14px; }
+  .field input:focus { outline: none; border-color: var(--accent); }
+
+  .summary { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .pill { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); font-size: 14px; }
+  .pill .k { color: var(--muted); font-size: 12px; display: block; margin-bottom: 2px; }
+  .pill.min { border-color: var(--green); }
+  .pill.min b { color: var(--green); }
+  .pill.max { border-color: var(--accent); }
+  .pill.max b { color: var(--accent); }
+
+  footer { margin-top: 28px; font-size: 12.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 data-i18n="title">华为云 MaaS 计算器</h1>
+
+  <div class="topbar">
+    <span class="badge off" id="statusBadge">目录价</span>
+    <label class="toggle">
+      <input type="checkbox" id="forceDisc">
+      <span data-i18n="toggle">预览夜间折扣价</span>
+    </label>
+    <button class="langbtn" id="langBtn">EN</button>
+  </div>
+
+  <div class="legend">
+    <span class="dot"></span><span data-i18n="legend">GLM-5.2 在北京时间 21:00–次日 08:00 目录价按 7 折计价（含缓存命中价）；DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 按 5 折计价（含缓存命中价）；GLM-5.3 不参与夜间折扣。勾选「预览夜间折扣价」可预览该折扣价；主表不随北京时间自动切换。</span>
+  </div>
+
+  <div class="scroll">
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th data-i18n="h_model">模型名称</th>
+        <th data-i18n="h_ctx">最大上下文长度</th>
+        <th data-i18n="h_maxin">最大输入长度</th>
+        <th data-i18n="h_maxout">最大输出长度</th>
+        <th data-i18n="h_maxcot">最大思维链长度</th>
+        <th data-i18n="h_iotype">输入/输出类型</th>
+        <th data-i18n="h_in">输入价</th>
+        <th data-i18n="h_cache">缓存命中价</th>
+        <th data-i18n="h_out">输出价</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  </div>
+
+  <h2 data-i18n="cost_title">成本计算器</h2>
+  <div class="note" data-i18n="cost_note">输入用量、缓存命中率与正常 / 夜间 Token 占比，计算每个模型的预估花费。夜间折扣占比的 Token 对 GLM-5.2 按 7 折计价，对 DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 按 5 折计价。支持缓存命中价的模型按命中率拆分正常 / 缓存输入花费；不支持者全部按正常输入计。</div>
+  <div class="controls">
+    <label class="field"><span data-i18n="f_in_tok">输入 Token（百万）</span>
+      <input type="number" id="c1in" value="1" min="0" step="0.1">
+    </label>
+    <label class="field"><span data-i18n="f_out_tok">输出 Token（百万）</span>
+      <input type="number" id="c1out" value="1" min="0" step="0.1">
+    </label>
+    <label class="field"><span data-i18n="f_cache_rate">输入缓存命中率（%）</span>
+      <input type="number" id="c1rate" value="0" min="0" max="100" step="1">
+    </label>
+    <label class="field"><span data-i18n="f_normal_share">正常时间段 Token 占比（%）</span>
+      <input type="number" id="c1normal" value="100" min="0" max="100" step="1">
+    </label>
+    <label class="field"><span data-i18n="f_night_share">夜间折扣 Token 占比（%）</span>
+      <input type="number" id="c1night" value="0" min="0" max="100" step="1">
+    </label>
+  </div>
+  <div class="note" id="c1fracInfo"></div>
+  <div class="summary" id="c1summary"></div>
+  <div class="scroll">
+  <table>
+    <thead>
+      <tr id="c1head"></tr>
+    </thead>
+    <tbody id="c1body"></tbody>
+  </table>
+  </div>
+
+  <h2 data-i18n="tok_title">Tokens 计算器</h2>
+  <div class="note" data-i18n="tok_note">输入预算、缓存命中率、输入 / 输出 Token 比例与正常 / 夜间 Token 占比，计算每个模型可使用的输入 / 输出 Token 量。夜间折扣占比的 Token 对 GLM-5.2 按 7 折计价，对 DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 按 5 折计价；占比 > 0 时额外展示按正常价、按折扣价计算的合计 Token。</div>
+  <div class="controls">
+    <label class="field"><span data-i18n="f_budget">预算 (USD)</span>
+      <input type="number" id="c2budget" value="10" min="0" step="1">
+    </label>
+    <label class="field"><span data-i18n="f_cache_rate">输入缓存命中率（%）</span>
+      <input type="number" id="c2rate" value="0" min="0" max="100" step="1">
+    </label>
+    <label class="field"><span data-i18n="f_ratio">输入 / 输出 Token 比例</span>
+      <input type="number" id="c2ratio" value="1" min="0" step="0.1">
+    </label>
+    <label class="field"><span data-i18n="f_normal_share">正常时间段 Token 占比（%）</span>
+      <input type="number" id="c2normal" value="100" min="0" max="100" step="1">
+    </label>
+    <label class="field"><span data-i18n="f_night_share">夜间折扣 Token 占比（%）</span>
+      <input type="number" id="c2night" value="0" min="0" max="100" step="1">
+    </label>
+  </div>
+  <div class="note" id="c2fracInfo"></div>
+  <div class="summary" id="c2summary"></div>
+  <div class="scroll">
+  <table>
+    <thead>
+      <tr id="c2head"></tr>
+    </thead>
+    <tbody id="c2body"></tbody>
+  </table>
+  </div>
+
+  <footer>
+    <p data-i18n="footer">说明：GLM-5.2 / GLM-5.3 / DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 支持缓存命中价。夜间折扣时段（北京时间 21:00–08:00）对 GLM-5.2 的全部目录价（输入、缓存、输出）乘以 0.7，对 DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 乘以 0.5，GLM-5.3 不参与折扣。成本计算器展示的是花费金额而非单价：正常输入花费=输入Token×输入价×(1−命中率)，缓存输入花费=输入Token×缓存命中价×命中率，输出花费=输出Token×输出价。</p>
+  </footer>
+</div>
+
+<script>
+let LANG = 'zh';
+const I18N = {
+  title: { zh: "华为云 MaaS 计算器", en: "Huawei Cloud MaaS Calculator" },
+  sub: { zh: "价格单位：USD / 百万 Tokens（目录价）", en: "Unit: USD / Million Tokens (List Price)" },
+  toggle: { zh: "预览夜间折扣价", en: "Preview Night Discount" },
+  legend: { zh: "GLM-5.2 在北京时间 21:00–次日 08:00 目录价按 7 折计价（含缓存命中价）；DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 按 5 折计价（含缓存命中价）；GLM-5.3 不参与夜间折扣。勾选「预览夜间折扣价」可预览该折扣价；主表不随北京时间自动切换。", en: "GLM-5.2 list prices are 30% off during 21:00–08:00 Beijing time (including cached input price); DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 are 50% off; GLM-5.3 does not participate in night discount. Check \"Preview Night Discount\" to preview; the main table does not auto-switch by Beijing time." },
+  h_model: { zh: "模型名称", en: "Model" },
+  h_ctx: { zh: "最大上下文长度", en: "Max Context" },
+  h_maxin: { zh: "最大输入长度", en: "Max Input" },
+  h_maxout: { zh: "最大输出长度", en: "Max Output" },
+  h_maxcot: { zh: "最大思维链长度", en: "Max CoT" },
+  h_iotype: { zh: "输入/输出类型", en: "Input/Output Type" },
+  h_in: { zh: "输入价 (USD/百万Tokens)", en: "Input Price (USD/M Tokens)" },
+  h_cache: { zh: "缓存命中价 (USD/百万Tokens)", en: "Cached Input Price (USD/M Tokens)" },
+  h_out: { zh: "输出价 (USD/百万Tokens)", en: "Output Price (USD/M Tokens)" },
+  lt32k: { zh: "输入&lt;32K", en: "Input&lt;32K" },
+  ge32k: { zh: "输入≥32K", en: "Input≥32K" },
+  io_text_text: { zh: "文本 / 文本", en: "Text / Text" },
+  io_textimg_text: { zh: "文本、图片 / 文本", en: "Text+Image / Text" },
+  cotna: { zh: "不涉及", en: "N/A" },
+  cost_title: { zh: "成本计算器", en: "Cost Calculator" },
+  cost_note: { zh: "输入用量、缓存命中率与正常 / 夜间 Token 占比，计算每个模型的预估花费。夜间折扣占比的 Token 对 GLM-5.2 按 7 折计价，对 DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 按 5 折计价。支持缓存命中价的模型按命中率拆分正常 / 缓存输入花费；不支持者全部按正常输入计。", en: "Enter usage, cache hit rate, and normal / night token shares to estimate each model's cost. The night discount share is priced at 30% off for GLM-5.2 and 50% off for DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017. Models with cached input price split input into normal / cached cost by hit rate; others count all input at normal price." },
+  f_in_tok: { zh: "输入 Token（百万）", en: "Input Tokens (M)" },
+  f_out_tok: { zh: "输出 Token（百万）", en: "Output Tokens (M)" },
+  f_cache_rate: { zh: "输入缓存命中率（%）", en: "Cache Hit Rate (%)" },
+  f_normal_share: { zh: "正常时间段 Token 占比（%）", en: "Normal-period Token Share (%)" },
+  f_night_share: { zh: "夜间折扣 Token 占比（%）", en: "Night Discount Token Share (%)" },
+  f_budget: { zh: "预算 (USD)", en: "Budget (USD)" },
+  f_ratio: { zh: "输入 / 输出 Token 比例", en: "Input/Output Token Ratio" },
+  c1h_normalin: { zh: "正常输入费用 (USD)", en: "Normal Input Cost (USD)" },
+  c1h_cachein: { zh: "缓存输入费用 (USD)", en: "Cached Input Cost (USD)" },
+  c1h_outcost: { zh: "输出费用 (USD)", en: "Output Cost (USD)" },
+  c1h_total: { zh: "总费用 (USD)", en: "Total Cost (USD)" },
+  tok_title: { zh: "Tokens 计算器", en: "Tokens Calculator" },
+  tok_note: { zh: "输入预算、缓存命中率、输入 / 输出 Token 比例与正常 / 夜间 Token 占比，计算每个模型可使用的输入 / 输出 Token 量。夜间折扣占比的 Token 对 GLM-5.2 按 7 折计价，对 DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 按 5 折计价；占比 > 0 时额外展示按正常价、按折扣价计算的合计 Token。", en: "Enter budget, cache hit rate, input/output token ratio, and normal / night token shares to compute available input / output tokens per model. The night discount share is priced at 30% off for GLM-5.2 and 50% off for DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017; when the share > 0, extra columns show totals at normal price and at discount price." },
+  c2h_effin: { zh: "有效输入价 (USD/百万Tokens)", en: "Effective Input Price (USD/M Tokens)" },
+  c2h_out: { zh: "有效输出价 (USD/百万Tokens)", en: "Effective Output Price (USD/M Tokens)" },
+  c2h_in: { zh: "输入 Token（百万）", en: "Input Tokens (M)" },
+  c2h_out2: { zh: "输出 Token（百万）", en: "Output Tokens (M)" },
+  c2h_tot: { zh: "总Token (百万)", en: "Total Tokens (M)" },
+  c2h_totnormal: { zh: "合计（全按正常价）(百万)", en: "Total (All Normal Price) (M)" },
+  c2h_totdisc: { zh: "合计（全按折扣价）(百万)", en: "Total (All Discount) (M)" },
+  min: { zh: "最小", en: "Min " },
+  max: { zh: "最大", en: "Max " },
+  total_label: { zh: "总费用", en: "Total Cost" },
+  token_label: { zh: "可用 Token", en: "Available Tokens" },
+  frac0: { zh: "GLM-5.2 / DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017：无夜间折扣占比，按目录价计。", en: "GLM-5.2 / DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017: no night discount share, priced at list price." },
+  frac1: { zh: "GLM-5.2 / DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017：全部为夜间折扣占比，按对应折扣计价。", en: "GLM-5.2 / DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017: fully night discount share, priced at corresponding discount." },
+  footer: { zh: "说明：GLM-5.2 / GLM-5.3 / DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 支持缓存命中价。夜间折扣时段（北京时间 21:00–08:00）对 GLM-5.2 的全部目录价（输入、缓存、输出）乘以 0.7，对 DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 乘以 0.5，GLM-5.3 不参与折扣。成本计算器展示的是花费金额而非单价：正常输入花费=输入Token×输入价×(1−命中率)，缓存输入花费=输入Token×缓存命中价×命中率，输出花费=输出Token×输出价。", en: "Note: GLM-5.2 / GLM-5.3 / DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 support cached input price. During the night discount window (21:00–08:00 Beijing time), all list prices (input, cached, output) of GLM-5.2 are multiplied by 0.7, DeepSeek-V4.1-Flash / DeepSeek-V4.1-Flash-1017 by 0.5; GLM-5.3 is not discounted. The Cost Calculator shows cost amounts, not unit prices: normal input cost = input tokens × input price × (1 − hit rate), cached input cost = input tokens × cached price × hit rate, output cost = output tokens × output price." },
+};
+function t(k) { return I18N[k][LANG]; }
+function labText(lab) { return lab === "—" ? "—" : t(lab); }
+function sv(s) { return I18N[s] ? t(s) : s; }
+function fix3(x) { return (x + (x >= 0 ? 1e-9 : -1e-9)).toFixed(3); }
+function applyStatic() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.getElementById('langBtn').textContent = LANG === 'zh' ? 'EN' : '中文';
+  document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+}
+
+function discTagText(disc) {
+  if (disc == null) return '';
+  const zhe = Math.round(disc * 10);
+  if (LANG === 'zh') return '可享夜间' + zhe + '折';
+  return 'Night ' + Math.round((1 - disc) * 100) + '% Off';
+}
+
+// spec: [ctx, maxIn, maxOut, maxCot, ioType]
+// disc: null = no night discount, 0.7 = 7折, 0.5 = 5折
+const DATA = [
+
+  { model: "GLM-5.2", disc: 0.7, spec: ["1M","1M","128K","64K","io_text_text"],
+    tiers: [{ lab:"—", in:1.400, cache:0.260, out:4.400 }] },
+  { model: "GLM-5.3", disc: null, spec: ["1M","1M","128K","128K","io_text_text"],
+    tiers: [{ lab:"—", in:1.400, cache:0.260, out:4.400 }] },
+  { model: "DeepSeek-V4.1-Flash", disc: 0.5, spec: ["1M","1M","384K","96K","io_textimg_text"],
+    tiers: [{ lab:"—", in:0.300, cache:0.030, out:1.200 }] },
+  { model: "DeepSeek-V4.1-Flash-1017", disc: 0.5, spec: ["1M","1M","384K","96K","io_textimg_text"],
+    tiers: [{ lab:"—", in:0.300, cache:0.030, out:1.200 }] },
+];
+
+function useDiscount() { return document.getElementById('forceDisc').checked; }
+
+function money(v, applyDisc, discRate) {
+  if (v == null) return '<span class="muted">—</span>';
+  if (applyDisc) return '<span class="pd"><span class="strike">' + fix3(v) + '</span><span class="disc">' + fix3(v*discRate) + '</span></span>';
+  return fix3(v);
+}
+
+function effPrices(tier, r, discFactor) {
+  const f = discFactor;
+  const inP = tier.in * f;
+  const outP = tier.out * f;
+  const cacheP = tier.cache == null ? null : tier.cache * f;
+  const inEff = cacheP == null ? inP : inP * (1 - r) + cacheP * r;
+  return { inP, cacheP, outP, inEff };
+}
+
+function priceCellMain(tiers, key, applyDisc, discRate) {
+  if (tiers.length === 1 && tiers[0].lab === "—") {
+    return '<td class="num">' + money(tiers[0][key], applyDisc, discRate) + '</td>';
+  }
+  let lines = '';
+  for (const t of tiers) lines += '<div class="line"><span class="lab">' + labText(t.lab) + '</span>' + money(t[key], applyDisc, discRate) + '</div>';
+  return '<td class="num"><div class="lines">' + lines + '</div></td>';
+}
+
+function renderMain() {
+  const useDisc = useDiscount();
+  const badge = document.getElementById('statusBadge');
+  badge.textContent = useDisc ? (LANG === 'zh' ? '预览折扣价' : 'Preview Discount') : (LANG === 'zh' ? '目录价' : 'List Price');
+  badge.className = 'badge ' + (useDisc ? 'on' : 'off');
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = '';
+  for (const r of DATA) {
+    const tr = document.createElement('tr');
+    if (r.disc != null) tr.className = 'glm';
+    const apply = useDisc && r.disc != null;
+    const tagHtml = r.disc != null ? '<span class="tag">' + discTagText(r.disc) + '</span>' : '';
+    const modelHtml = '<td class="model">' + r.model + tagHtml + '</td>';
+    const specHtml = r.spec.map(s => '<td class="num">' + sv(s) + '</td>').join('');
+    tr.innerHTML = modelHtml + specHtml +
+      priceCellMain(r.tiers, 'in', apply, r.disc) +
+      priceCellMain(r.tiers, 'cache', apply, r.disc) +
+      priceCellMain(r.tiers, 'out', apply, r.disc);
+    tb.appendChild(tr);
+  }
+}
+
+function modelDiscFactor(r, ratioData) {
+  if (r.disc == null || ratioData.total <= 0) return 1;
+  return (ratioData.n + r.disc * ratioData.g) / ratioData.total;
+}
+
+function renderCalc(headId, bodyId, summaryId, valueLabel, valueFmt, rate, ratioData, cols, valueKey) {
+  document.getElementById(headId).innerHTML = '<th>' + t('h_model') + '</th>' + cols.map(c => '<th>' + c.title + '</th>').join('');
+  const variants = [];
+  for (const r of DATA) {
+    const discFactor = modelDiscFactor(r, ratioData);
+    for (const tt of r.tiers) {
+      const ep = effPrices(tt, rate, discFactor);
+      const data = {};
+      for (const c of cols) data[c.key] = c.valFn(r, tt, discFactor, ep);
+      variants.push({ model: r.model, lab: tt.lab, data });
+    }
+  }
+  const metric = variants.map(v => v.data[valueKey]).filter(x => isFinite(x));
+  const minV = Math.min(...metric), maxV = Math.max(...metric);
+  const minVars = variants.filter(v => v.data[valueKey] === minV);
+  const maxVars = variants.filter(v => v.data[valueKey] === maxV);
+  const labStr = v => v.lab === "—" ? "" : " (" + labText(v.lab) + ")";
+  const sep = LANG === 'zh' ? '、' : ', ';
+  const nameList = vs => vs.map(v => v.model + labStr(v)).join(sep);
+  document.getElementById(summaryId).innerHTML =
+    '<div class="pill min"><span class="k">' + t('min') + valueLabel + '</span><b>' + valueFmt(minV) + '</b> &nbsp;' + nameList(minVars) + '</div>' +
+    '<div class="pill max"><span class="k">' + t('max') + valueLabel + '</span><b>' + valueFmt(maxV) + '</b> &nbsp;' + nameList(maxVars) + '</div>';
+
+  const tb = document.getElementById(bodyId);
+  tb.innerHTML = '';
+  for (const r of DATA) {
+    const discFactor = modelDiscFactor(r, ratioData);
+    const tr = document.createElement('tr');
+    if (r.disc != null) tr.className = 'glm';
+    const single = r.tiers.length === 1 && r.tiers[0].lab === "—";
+    let html = '<td class="model">' + r.model + '</td>';
+    const rows = r.tiers.map(tt => {
+      const ep = effPrices(tt, rate, discFactor);
+      const data = {};
+      for (const c of cols) data[c.key] = c.valFn(r, tt, discFactor, ep);
+      return { lab: tt.lab, data };
+    });
+    for (const c of cols) {
+      if (single) {
+        html += '<td class="num">' + c.fmt(rows[0].data[c.key]) + '</td>';
+      } else {
+        let lines = '';
+        for (const rr of rows) {
+          let cls = 'line';
+          if (c.key === valueKey && rr.data[c.key] === minV) cls += ' min';
+          if (c.key === valueKey && rr.data[c.key] === maxV) cls += ' max';
+          lines += '<div class="' + cls + '"><span class="lab">' + labText(rr.lab) + '</span>' + c.fmt(rr.data[c.key]) + '</div>';
+        }
+        html += '<td class="num"><div class="lines">' + lines + '</div></td>';
+      }
+    }
+    tr.innerHTML = html;
+    tb.appendChild(tr);
+  }
+}
+
+function rateOf(id) { return Math.min(1, Math.max(0, (parseFloat(document.getElementById(id).value) || 0) / 100)); }
+
+function ratioFactor(normalId, nightId) {
+  const n = Math.max(0, parseFloat(document.getElementById(normalId).value) || 0);
+  const g = Math.max(0, parseFloat(document.getElementById(nightId).value) || 0);
+  const total = n + g;
+  if (total <= 0) return { frac: 0, n: 0, g: 0, total: 0 };
+  const frac = g / total;
+  return { frac, n, g, total };
+}
+function fracInfoText(ratioData) {
+  const frac = ratioData.frac;
+  if (frac <= 0) return t('frac0');
+  if (frac >= 1) return t('frac1');
+  const discGroups = {};
+  for (const r of DATA) {
+    if (r.disc == null) continue;
+    const key = r.disc;
+    if (!discGroups[key]) discGroups[key] = [];
+    discGroups[key].push(r.model);
+  }
+  let parts = [];
+  for (const [disc, models] of Object.entries(discGroups)) {
+    const d = parseFloat(disc);
+    const zhe = Math.round(d * 10);
+    const effFactor = 1 - (1 - d) * frac;
+    if (LANG === 'zh') {
+      parts.push(models.join(' / ') + '：夜间 ' + zhe + ' 折占比 ' + (frac * 100).toFixed(0) + '%，等效 ' + (effFactor * 10).toFixed(1) + ' 折计价。');
+    } else {
+      parts.push(models.join(' / ') + ': night ' + Math.round((1 - d) * 100) + '% off share ' + (frac * 100).toFixed(0) + '%, effective ' + (effFactor * 100).toFixed(0) + '% of list price.');
+    }
+  }
+  return parts.join(' ');
+}
+
+function renderCalc1() {
+  const I = parseFloat(document.getElementById('c1in').value) || 0;
+  const O = parseFloat(document.getElementById('c1out').value) || 0;
+  const rate = rateOf('c1rate');
+  const ratioData = ratioFactor('c1normal', 'c1night');
+  document.getElementById('c1fracInfo').textContent = fracInfoText(ratioData);
+  const cols = [
+    { key: 'normalIn', title: t('c1h_normalin'), valFn: (r, tt, df, ep) => I * ep.inP * (ep.cacheP == null ? 1 : (1 - rate)), fmt: x => fix3(x) },
+    { key: 'cacheIn',  title: t('c1h_cachein'), valFn: (r, tt, df, ep) => ep.cacheP == null ? null : I * ep.cacheP * rate, fmt: x => x == null ? '—' : fix3(x) },
+    { key: 'outCost',  title: t('c1h_outcost'), valFn: (r, tt, df, ep) => O * ep.outP, fmt: x => fix3(x) },
+    { key: 'total',    title: t('c1h_total'), valFn: (r, tt, df, ep) => I * ep.inP * (ep.cacheP == null ? 1 : (1 - rate)) + (ep.cacheP == null ? 0 : I * ep.cacheP * rate) + O * ep.outP, fmt: x => fix3(x) }
+  ];
+  renderCalc('c1head', 'c1body', 'c1summary', t('total_label'), x => '$' + fix3(x), rate, ratioData, cols, 'total');
+}
+
+function renderCalc2() {
+  const B = parseFloat(document.getElementById('c2budget').value) || 0;
+  const rate = rateOf('c2rate');
+  const ratio = Math.max(0, parseFloat(document.getElementById('c2ratio').value) || 0);
+  const ratioData = ratioFactor('c2normal', 'c2night');
+  document.getElementById('c2fracInfo').textContent = fracInfoText(ratioData);
+  const split = (ep) => { const d = ratio * ep.inEff + ep.outP; if (d <= 0) return { I: Infinity, O: Infinity }; const O = B / d; return { I: ratio * O, O }; };
+  const cols = [
+    { key: 'inEff', title: t('c2h_effin'), fmt: x => fix3(x), valFn: (r, tt, df, ep) => ep.inEff },
+    { key: 'out',   title: t('c2h_out'), fmt: x => fix3(x), valFn: (r, tt, df, ep) => ep.outP },
+    { key: 'tin',   title: t('c2h_in'), valFn: (r, tt, df, ep) => split(ep).I, fmt: x => isFinite(x) ? fix3(x) : '—' },
+    { key: 'tout',  title: t('c2h_out2'), valFn: (r, tt, df, ep) => split(ep).O, fmt: x => isFinite(x) ? fix3(x) : '—' },
+    { key: 'tot',   title: t('c2h_tot'), valFn: (r, tt, df, ep) => { const s = split(ep); return isFinite(s.I) ? s.I + s.O : Infinity; }, fmt: x => isFinite(x) ? fix3(x) : '—' }
+  ];
+  renderCalc('c2head', 'c2body', 'c2summary', t('token_label'), x => isFinite(x) ? fix3(x) + ' M' : '—', rate, ratioData, cols, 'tot');
+}
+
+function renderAll() {
+  renderMain();
+  renderCalc1();
+  renderCalc2();
+}
+
+function setLang(l) { LANG = l; applyStatic(); renderAll(); }
+
+document.getElementById('langBtn').addEventListener('click', () => setLang(LANG === 'zh' ? 'en' : 'zh'));
+
+['forceDisc','c1in','c1out','c1rate','c2budget','c2rate','c2ratio'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderAll);
+  document.getElementById(id).addEventListener('change', renderAll);
+});
+
+function clampPct(v) { return Math.min(100, Math.max(0, parseFloat(v) || 0)); }
+function linkPair(normalId, nightId) {
+  const n = document.getElementById(normalId), g = document.getElementById(nightId);
+  n.addEventListener('input', () => { g.value = (100 - clampPct(n.value)).toFixed(0); renderAll(); });
+  g.addEventListener('input', () => { n.value = (100 - clampPct(g.value)).toFixed(0); renderAll(); });
+}
+linkPair('c1normal', 'c1night');
+linkPair('c2normal', 'c2night');
+
+applyStatic();
+renderAll();
+</script>
+</body>
+</html>
