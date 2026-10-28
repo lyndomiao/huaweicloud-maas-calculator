@@ -4,7 +4,7 @@ A single-file, dependency-free web calculator for estimating the cost of Huawei 
 
 ## File
 
-`Huawie Cloud MaaS Calculator-v1.03.html`
+`Huawei Cloud MaaS Calculator-v1.03.html`
 
 ## Features
 
