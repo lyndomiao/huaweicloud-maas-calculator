@@ -16,9 +16,9 @@ A single-file, dependency-free web calculator for estimating the cost of Huawei 
 
 ## Models
 
-- `GLM-5.2` — night discount 30% off (7-折)
+- `GLM-5.2` — night discount 30% off
 - `GLM-5.3` — no night discount
-- `DeepSeek-V4.1-Flash` — night discount 50% off (5-折)
+- `DeepSeek-V4.1-Flash` — night discount 50% off
 - `DeepSeek-V4.1-Flash-1017` — same price and discount as `DeepSeek-V4.1-Flash`
 
 Night discount applies during 21:00–08:00 Beijing time.
